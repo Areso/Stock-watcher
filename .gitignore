@@ -1,3 +1,15 @@
 .idea/
 pass*
-pass.txt
+secret*
+key.txt
+key.php
+key.py
+key.pyc
+config.txt
+config.php
+config.py
+config.pyc
+connection.txt
+connection.php
+connection.py
+connection.pyc
