@@ -1,3 +1,11 @@
+1.0.4
+SMS is sending, key, number is reading from key and config files.
+renamed main.py to stock-watcher.py
+added instuctions to README.md
+script now tuned for one run in fullday (24h)
+TODO: change source from spbexchange to tinkoff site
+TODO: add list of stocks
+
 1.0.3
 Barebone done
 TODO: read key, send sms
