@@ -1,10 +1,12 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 import sys
+import os
 import urllib3
 from time import sleep
 from bs4 import BeautifulSoup
 import requests
 import time
+import traceback
 
 
 def send_message(mymessage):
@@ -13,23 +15,45 @@ def send_message(mymessage):
     sms_url = sms_url.replace('number', mynumber)
     sms_url = sms_url.replace('message', mymessage)
     print(sms_url)
-    sms_response = requests.get(sms_url)
+    #sms_response = requests.get(sms_url)
     global sms_counter
     sms_counter = sms_counter + 1
 
 
-f = open("key.txt", "r")
+INDENT = '   '
+mycallstack = traceback.format_stack()
+mycallstack = mycallstack[0]
+mypos = mycallstack.find('\"')
+deletepart = mycallstack[0:mypos+1]
+mycallstack = mycallstack.replace(deletepart, '')
+mypos = mycallstack.find('\"')
+deletepart = mycallstack[0:mypos+1]
+mypos = mycallstack.find('\"')
+mycallstack = mycallstack[0:mypos]
+
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+print(dir_path)
+
+keypath = dir_path+'\\'
+mynumberpath = dir_path+'\\'
+
+f = open(keypath+"key.txt", "r")
 mykey = f.read()
+# mykey = 'key' # debug
 f.close()
 
-f = open("config.txt", "r")
+f = open(mynumberpath+"config.txt", "r")
 mynumber = f.read()
+# mynumber = '922' # debug
 f.close()
 
 sms_counter = 0
 threshold_min = 270
 threshold_max = 300
 url = "http://spbexchange.ru/ru/market-data/Default.aspx"
+
+
 
 while True:
     response = requests.get(url)

@@ -1,3 +1,6 @@
+1.0.5
+Fixed a bug with file reading from the wrong directory.
+
 1.0.4
 SMS is sending, key, number is reading from key and config files.
 renamed main.py to stock-watcher.py
