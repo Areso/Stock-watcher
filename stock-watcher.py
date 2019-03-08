@@ -14,22 +14,9 @@ def send_message(mymessage):
     sms_url = sms_url.replace('key', mykey)
     sms_url = sms_url.replace('number', mynumber)
     sms_url = sms_url.replace('message', mymessage)
-    print(sms_url)
-    #sms_response = requests.get(sms_url)
+    sms_response = requests.get(sms_url)
     global sms_counter
     sms_counter = sms_counter + 1
-
-
-INDENT = '   '
-mycallstack = traceback.format_stack()
-mycallstack = mycallstack[0]
-mypos = mycallstack.find('\"')
-deletepart = mycallstack[0:mypos+1]
-mycallstack = mycallstack.replace(deletepart, '')
-mypos = mycallstack.find('\"')
-deletepart = mycallstack[0:mypos+1]
-mypos = mycallstack.find('\"')
-mycallstack = mycallstack[0:mypos]
 
 
 dir_path = os.path.dirname(os.path.realpath(__file__))

@@ -1,3 +1,6 @@
+1.0.6
+Fixed commented SMS sending (oops!)
+
 1.0.5
 Fixed a bug with file reading from the wrong directory.
 
