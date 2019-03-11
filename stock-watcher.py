@@ -44,14 +44,22 @@ def myloading():
         for line in f:
             shares.append(line)
 
-    #myshares = f.read()
-    # mykey = 'key' # debug
-    #print(myshares)
-    #print(type(myshares))
-    #print(len(shares))
-    #f.close()
+    myassets = shares[0].split(";")
+    myexchanges = shares[1].split(";")
+    mythreshold_low = shares[2].split(";")
+    mythreshold_high = shares[3].split(";")
+    myassets = myassets[:-1]
+    myexchanges = myexchanges[:-1]
+    mythreshold_low = mythreshold_low[:-1]
+    mythreshold_high = mythreshold_high[:-1]
 
+    amountofassets = len(myassets)
 
+    sms_counter_dict = {}
+
+    if len(myassets) > 0:
+        for each_asset in myassets:
+            sms_counter_dict[each_asset] = 0
 
     global sms_counter, threshold_min, threshold_max
     sms_counter = 0
@@ -60,10 +68,14 @@ def myloading():
     myparams = []
     myparams.append(mykey)
     myparams.append(mynumber)
-    myparams.append(sms_counter)
-    myparams.append(threshold_min)
-    myparams.append(threshold_max)
-    return myparams
+    # myparams.append(sms_counter)
+    # myparams.append(threshold_min)
+    # myparams.append(threshold_max)
+    return myparams, myassets, myexchanges, mythreshold_low, mythreshold_high, sms_counter_dict
+
+
+def test():
+    return 2,3,4
 
 
 def parsing_spbexchange(parsing_params):
@@ -72,12 +84,11 @@ def parsing_spbexchange(parsing_params):
     page = response.text
     soup = BeautifulSoup(response.text, "html.parser")
     mytext = soup.get_text()
-    mypos = mytext.find("TSLA")
-    sizeOfLine = 120
-    my_listing_text = (mytext[mypos:mypos + sizeOfLine])
+    mypos = mytext.find(parsing_params)
+    size_of_line = 120
+    my_listing_text = (mytext[mypos:mypos + size_of_line])
     my_listing_values = my_listing_text.split()
     my_listing_price = []
-    # print(myTSLAtext.count('\n'))
 
     i = 0
     for myelement in my_listing_values:
@@ -98,20 +109,28 @@ def parsing_spbexchange(parsing_params):
         return price
 
 
-def main_cicle(cicle_params):
+def main_loop(loop_params, loop_assets, loop_exchanges, loop_threshold_low, loop_threshold_high, loop_sms_counter_dict):
     while True:
-        price = parsing_spbexchange(cicle_params)
-        print(price)
-        if price != 0:
-            if price < threshold_min and sms_counter == 0:
-                send_message('min threshold is passed', cicle_params)
-            if price > threshold_max and sms_counter == 0:
-                send_message('max threshold is passed', cicle_params)
+        myiterator = 0
+        for each_asset in loop_assets:
+            price = parsing_spbexchange(each_asset)
+            threshold_low = float(loop_threshold_low[myiterator])
+            threshold_max = float(loop_threshold_high[myiterator])
+            print(price)
+            if price != 0:
+                print('low threshold is '+str(threshold_low))
+                print('max threshold is ' + str(threshold_max))
+                # TODO send asset's name, threshold passed, threshold value
+                if price < threshold_low and sms_counter == 0:
+                    send_message('min threshold is passed', loop_params)
+                if price > threshold_max and sms_counter == 0:
+                    send_message('max threshold is passed', loop_params)
+            myiterator = myiterator + 1
         time.sleep(5)
 
 
 if __name__ == "__main__":
-    myparams = myloading()
-    main_cicle(myparams)
+    myparams, myassets, myexchanges, mythreshold_low, mythreshold_high, sms_counter_dict = myloading()
+    main_loop(myparams, myassets, myexchanges, mythreshold_low, mythreshold_high, sms_counter_dict)
 else:
     print("the program is being imported into another module")
