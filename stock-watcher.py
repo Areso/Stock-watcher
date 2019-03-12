@@ -6,18 +6,29 @@ from time import sleep
 from bs4 import BeautifulSoup
 import requests
 import time
+from selenium import webdriver
 import traceback
+from requests_html import HTMLSession
 
 
-def send_message(mymessage, message_params):
+def send_message(mymessage, msg_params, msg_asset, msg_threshold, msg_price, msg_sms_counter_dict):
     sms_url = 'https://sms.ru/sms/send?api_id=key&to=number&msg=message&json=1'
-    sms_url = sms_url.replace('key', mykey)
-    sms_url = sms_url.replace('number', mynumber)
-    sms_url = sms_url.replace('message', mymessage)
+    sms_url = sms_url.replace('key', msg_params[0])
+    sms_url = sms_url.replace('number', msg_params[1])
+    message = ''
+    if mymessage == 'min':
+        message = 'Asset '+msg_asset+' is passed MIN threshold ('+str(msg_threshold)\
+                  + ') with current asset price ' + str(msg_price)
+    elif mymessage == 'max':
+        message = 'Asset ' + msg_asset + ' is passed MAX threshold (' + str(msg_threshold)\
+                  + ') with current asset price ' + str(msg_price)
+    print(message)
+    sms_url = sms_url.replace('message', message)
+    # TODO try block. Sometimes SMS.RU get stuck
     sms_response = requests.get(sms_url)
-    print('sms sent') # debug
-    global sms_counter
-    sms_counter = sms_counter + 1
+    print('sms sent')
+    msg_sms_counter_dict[msg_asset] = msg_sms_counter_dict[msg_asset] + 1
+    return msg_sms_counter_dict
 
 
 def myloading():
@@ -26,34 +37,26 @@ def myloading():
     mynumberpath = dir_path + '\\'
 
     f = open(keypath + "key.txt", "r")
-    global mykey
     mykey = f.read()
-    # mykey = 'key' # debug
     f.close()
 
     f = open(mynumberpath + "config.txt", "r")
-    global mynumber
     mynumber = f.read()
-    # mynumber = '922' # debug
     f.close()
 
-    global myshares
     shares = []
-    # f = open(keypath + "shares.txt", "r")
     with open(keypath + "shares.txt") as f:
         for line in f:
             shares.append(line)
 
     myassets = shares[0].split(";")
     myexchanges = shares[1].split(";")
-    mythreshold_low = shares[2].split(";")
-    mythreshold_high = shares[3].split(";")
+    mythreshold_min = shares[2].split(";")
+    mythreshold_max = shares[3].split(";")
     myassets = myassets[:-1]
     myexchanges = myexchanges[:-1]
-    mythreshold_low = mythreshold_low[:-1]
-    mythreshold_high = mythreshold_high[:-1]
-
-    amountofassets = len(myassets)
+    mythreshold_min = mythreshold_min[:-1]
+    mythreshold_max = mythreshold_max[:-1]
 
     sms_counter_dict = {}
 
@@ -61,30 +64,19 @@ def myloading():
         for each_asset in myassets:
             sms_counter_dict[each_asset] = 0
 
-    global sms_counter, threshold_min, threshold_max
-    sms_counter = 0
-    threshold_min = 270
-    threshold_max = 300
     myparams = []
     myparams.append(mykey)
     myparams.append(mynumber)
-    # myparams.append(sms_counter)
-    # myparams.append(threshold_min)
-    # myparams.append(threshold_max)
-    return myparams, myassets, myexchanges, mythreshold_low, mythreshold_high, sms_counter_dict
+    return myparams, myassets, myexchanges, mythreshold_min, mythreshold_max, sms_counter_dict
 
 
-def test():
-    return 2,3,4
-
-
-def parsing_spbexchange(parsing_params):
+def parsing_spbexchange(parsing_asset):
     url = "http://spbexchange.ru/ru/market-data/Default.aspx"
     response = requests.get(url)
     page = response.text
     soup = BeautifulSoup(response.text, "html.parser")
     mytext = soup.get_text()
-    mypos = mytext.find(parsing_params)
+    mypos = mytext.find(parsing_asset)
     size_of_line = 120
     my_listing_text = (mytext[mypos:mypos + size_of_line])
     my_listing_values = my_listing_text.split()
@@ -109,28 +101,74 @@ def parsing_spbexchange(parsing_params):
         return price
 
 
-def main_loop(loop_params, loop_assets, loop_exchanges, loop_threshold_low, loop_threshold_high, loop_sms_counter_dict):
+def parsing_tradingview(parsing_asset, parsing_exchange):
+    url = "https://www.tradingview.com/symbols/"
+    url = url + parsing_exchange + '-' + parsing_asset
+    print(url)
+    response = requests.get(url)
+    page = response.text
+
+
+    session = HTMLSession()
+    r = session.get(url)
+    r.html.render()
+    my = r.html.text
+    # print(type(my))
+
+    soup = BeautifulSoup(my, "html.parser")
+    #price = soup.find('tv-symbol-header-quote__value tv-symbol-header-quote__value--large js-symbol-last')
+    #price = soup.find('anchor-page-1')
+    print(soup.prettify())
+    # mytext = soup.get_text()
+    # mypos = mytext.find(parsing_asset)
+    # size_of_line = 120
+    # my_listing_text = (mytext[mypos:mypos + size_of_line])
+    # my_listing_values = my_listing_text.split()
+    # my_listing_price = []
+
+    i = 0
+    # for myelement in my_listing_values:
+    #    if i < 15:
+    #        if i == 9:
+    #            my_listing_price.append(myelement)
+    #    i = i + 1
+    my_listing_price = []
+    # my_listing_price.append('279,84')  # debug message
+
+    if len(my_listing_price) > 0:
+        price = (my_listing_price[0])
+        price = price.replace(",", ".")
+        price = float(price)
+        return price
+    else:
+        price = 0
+        return price
+
+
+def main_loop(loop_params, loop_assets, loop_exchanges, loop_threshold_min, loop_threshold_max, loop_sms_counter_dict):
     while True:
         myiterator = 0
         for each_asset in loop_assets:
-            price = parsing_spbexchange(each_asset)
-            threshold_low = float(loop_threshold_low[myiterator])
-            threshold_max = float(loop_threshold_high[myiterator])
+            # price = parsing_spbexchange(each_asset)
+            price = parsing_tradingview(each_asset, loop_exchanges[myiterator])
+            threshold_min = float(loop_threshold_min[myiterator])
+            threshold_max = float(loop_threshold_max[myiterator])
+            sms_counter = loop_sms_counter_dict[each_asset]
             print(price)
             if price != 0:
-                print('low threshold is '+str(threshold_low))
-                print('max threshold is ' + str(threshold_max))
-                # TODO send asset's name, threshold passed, threshold value
-                if price < threshold_low and sms_counter == 0:
-                    send_message('min threshold is passed', loop_params)
+                # print('min threshold is ' + str(threshold_min)) # debug
+                # print('max threshold is ' + str(threshold_max)) # debug
+                # print(str(sms_counter)) # debug
+                if price < threshold_min and sms_counter == 0:
+                    loop_sms_counter_dict = send_message('min', loop_params, each_asset, threshold_min, price, loop_sms_counter_dict)
                 if price > threshold_max and sms_counter == 0:
-                    send_message('max threshold is passed', loop_params)
+                    loop_sms_counter_dict = send_message('max', loop_params, each_asset, threshold_max, price, loop_sms_counter_dict)
             myiterator = myiterator + 1
         time.sleep(5)
 
 
 if __name__ == "__main__":
-    myparams, myassets, myexchanges, mythreshold_low, mythreshold_high, sms_counter_dict = myloading()
-    main_loop(myparams, myassets, myexchanges, mythreshold_low, mythreshold_high, sms_counter_dict)
+    ld_params, ld_assets, ld_exchanges, ld_threshold_min, ld_threshold_max, ld_sms_counter_dict = myloading()
+    main_loop(ld_params, ld_assets, ld_exchanges, ld_threshold_min, ld_threshold_max, ld_sms_counter_dict)
 else:
     print("the program is being imported into another module")
