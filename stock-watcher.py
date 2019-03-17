@@ -111,21 +111,27 @@ def parsing_tradingview(parsing_asset, parsing_exchange):
 
     session = HTMLSession()
     r = session.get(url)
-    r.html.render()
+    r.html.render(timeout=30)
     my = r.html.text
     # print(type(my))
 
-    soup = BeautifulSoup(my, "html.parser")
+    #soup = BeautifulSoup(my, "html.parser")
+    #price = soup.find_all(class_='js-symbol-last')
+    #selector = 'span.tv-symbol-header-quote__value.tv-symbol-header-quote__value--large.js-symbol-last'
+    #price = soup.select(selector)
     #price = soup.find('tv-symbol-header-quote__value tv-symbol-header-quote__value--large js-symbol-last')
-    #price = soup.find('anchor-page-1')
-    print(soup.prettify())
+    #print(type(price))
+    #print(price)
+    #print(price)
+    #print(soup.prettify())
     # mytext = soup.get_text()
     # mypos = mytext.find(parsing_asset)
     # size_of_line = 120
     # my_listing_text = (mytext[mypos:mypos + size_of_line])
     # my_listing_values = my_listing_text.split()
     # my_listing_price = []
-
+    r.close()
+    session.close()
     i = 0
     # for myelement in my_listing_values:
     #    if i < 15:
@@ -164,7 +170,7 @@ def main_loop(loop_params, loop_assets, loop_exchanges, loop_threshold_min, loop
                 if price > threshold_max and sms_counter == 0:
                     loop_sms_counter_dict = send_message('max', loop_params, each_asset, threshold_max, price, loop_sms_counter_dict)
             myiterator = myiterator + 1
-        time.sleep(5)
+        time.sleep(15)
 
 
 if __name__ == "__main__":
