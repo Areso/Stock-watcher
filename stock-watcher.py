@@ -1,13 +1,12 @@
 #!/usr/bin/python3
+# This script licensed under AGPLv3 License
+# This very version made by Anton Gladyshev (Areso)
 import sys
 import os
-import urllib3
-from time import sleep
 from bs4 import BeautifulSoup
 import requests
 import time
-from selenium import webdriver
-import traceback
+# from selenium import webdriver
 from requests_html import HTMLSession
 
 
@@ -73,7 +72,6 @@ def myloading():
 def parsing_spbexchange(parsing_asset):
     url = "http://spbexchange.ru/ru/market-data/Default.aspx"
     response = requests.get(url)
-    page = response.text
     soup = BeautifulSoup(response.text, "html.parser")
     mytext = soup.get_text()
     mypos = mytext.find(parsing_asset)
@@ -105,49 +103,48 @@ def parsing_tradingview(parsing_asset, parsing_exchange):
     url = "https://www.tradingview.com/symbols/"
     url = url + parsing_exchange + '-' + parsing_asset
     print(url)
-    response = requests.get(url)
-    page = response.text
-
+    #response = requests.get(url)
+    #page = response.text
+    #print(page)
 
     session = HTMLSession()
     r = session.get(url)
-    r.html.render(timeout=30)
-    my = r.html.text
-    # print(type(my))
+    my = r.html.render(timeout=30)
+    test = r.html.search('js-symbol-last')
 
     #soup = BeautifulSoup(my, "html.parser")
     #price = soup.find_all(class_='js-symbol-last')
-    #selector = 'span.tv-symbol-header-quote__value.tv-symbol-header-quote__value--large.js-symbol-last'
+    #price = soup.prettify()
     #price = soup.select(selector)
     #price = soup.find('tv-symbol-header-quote__value tv-symbol-header-quote__value--large js-symbol-last')
-    #print(type(price))
-    #print(price)
-    #print(price)
-    #print(soup.prettify())
-    # mytext = soup.get_text()
-    # mypos = mytext.find(parsing_asset)
-    # size_of_line = 120
-    # my_listing_text = (mytext[mypos:mypos + size_of_line])
-    # my_listing_values = my_listing_text.split()
-    # my_listing_price = []
+
+    selector = 'span.tv-symbol-header-quote__value.tv-symbol-header-quote__value--large.js-symbol-last'
+    price = r.html.find(selector)[0].text
     r.close()
     session.close()
-    i = 0
-    # for myelement in my_listing_values:
-    #    if i < 15:
-    #        if i == 9:
-    #            my_listing_price.append(myelement)
-    #    i = i + 1
-    my_listing_price = []
-    # my_listing_price.append('279,84')  # debug message
-
-    if len(my_listing_price) > 0:
-        price = (my_listing_price[0])
-        price = price.replace(",", ".")
+    try:
         price = float(price)
-        return price
-    else:
+    except:
         price = 0
+    finally:
+        return price
+
+
+def parsing_tinkoff(parsing_asset):
+    url = "https://www.tinkoff.ru/invest/stocks/"
+    url = url + parsing_asset
+    response = requests.get(url)
+    soup = BeautifulSoup(response.text, "html.parser")
+    inputTag = soup.findAll(attrs={"data-qa-file": "Money"})
+    priceline = inputTag[0]
+    priceline = priceline.get_text()
+    priceline = priceline[:-2]
+    priceline = priceline.replace(",", ".")
+    try:
+        price = float(priceline)
+    except:
+        price = 0
+    finally:
         return price
 
 
@@ -156,7 +153,8 @@ def main_loop(loop_params, loop_assets, loop_exchanges, loop_threshold_min, loop
         myiterator = 0
         for each_asset in loop_assets:
             # price = parsing_spbexchange(each_asset)
-            price = parsing_tradingview(each_asset, loop_exchanges[myiterator])
+            # price = parsing_tradingview(each_asset, loop_exchanges[myiterator])
+            price = parsing_tinkoff(each_asset)
             threshold_min = float(loop_threshold_min[myiterator])
             threshold_max = float(loop_threshold_max[myiterator])
             sms_counter = loop_sms_counter_dict[each_asset]
